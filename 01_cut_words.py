@@ -30,7 +30,7 @@ def clean_sentence(sentence):
     '''
     if isinstance(sentence, str):
         return re.sub(
-            r'[\s+\-\|\!\/\[\]\{\}_,.$%^*(+\"\')]+|[:：+——()?【】“”！，。？、~@#￥%……&*（）]+|车主说|技师说|语音|图片|你好|您好',
+            r'[\s+\-\|\!\/\[\]\{\}_,.$%^*(+\"\')]+|[:：+——()?【】“”！，。？、~@#￥%……&*（）]+|车主说|技师说|语音|图片|你好|您好|nan',
             '', sentence)
     else:
         return ''
@@ -63,8 +63,15 @@ def cut_data_frame(df):
     return df
 
 
-train_df = parallelize(train_df, cut_data_frame);
-test_df = parallelize(test_df, cut_data_frame);
+train_df = parallelize(train_df, cut_data_frame)
+test_df = parallelize(test_df, cut_data_frame)
 train_df.to_csv('database/train_seg_data.csv',index=None,header=True)
 test_df.to_csv('database/test_seg_data.csv',index=None,header=True)
+# 把train test 里面的数据合并到merged列
+train_df['merged'] = train_df[['Question', 'Dialogue', 'Report']].apply(lambda x: ' '.join(x), axis=1)  # axis 横向拼接
+test_df['merged'] = test_df[['Question', 'Dialogue']].apply(lambda x: ' '.join(x), axis=1)
+# 把train和test里面的merged列合并
+merged_df = pd.concat([train_df[['merged']], test_df[['merged']]], axis=0)  # 纵向拼接
+# 保存csv文件
+merged_df.to_csv('database/merged_train_test_seg_data.csv', header=False)
 
