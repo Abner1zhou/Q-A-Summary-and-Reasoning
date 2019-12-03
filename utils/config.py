@@ -23,4 +23,6 @@ test_seg_path = os.path.join(root, 'database', 'test_seg_data.csv')
 merger_seg_path = os.path.join(root, 'database', 'merged_train_test_seg_data.csv')
 # word2vec 模板
 w2v_model_path = os.path.join(root, 'database/wv', 'word2vec.model')
+# FastText 模板
+ft_model_path = os.path.join(root, 'database/wv', 'FastText.model')
 
