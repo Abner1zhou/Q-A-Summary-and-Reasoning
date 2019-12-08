@@ -25,4 +25,19 @@ merger_seg_path = os.path.join(root, 'database', 'merged_train_test_seg_data.csv
 w2v_model_path = os.path.join(root, 'database/wv', 'word2vec.model')
 # FastText 模板
 ft_model_path = os.path.join(root, 'database/wv', 'FastText.model')
+# train_X
+train_x_path = os.path.join(root, 'database', 'train_x_df.csv')
+# train_Y
+train_y_path = os.path.join(root, 'database', 'train_y_df.csv')
+# test_Y
+test_x_path = os.path.join(root, 'database', 'text_x_df.csv')
+# 词表保存路径
+vocab_path = os.path.join(root, 'database', 'wv', 'vocab.txt')
+reverse_vocab_path = os.path.join(root, 'database', 'wv', 'reverse_vocab.txt')
+# embedding matrix
+embedding_matrix_path = os.path.join(root, 'database', 'wv', 'embedding_matrix.csv')
+
+# 设置常量
+# 训练轮数
+WV_TRAIN_EPOCHS = 10
 
