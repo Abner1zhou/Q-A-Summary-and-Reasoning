@@ -2,6 +2,7 @@ import pandas as pd
 import collections
 import jieba
 import re
+
 from utils.multi_cpus import parallelize
 
 TRAIN_PATH = "/home/abner/PycharmProjects/NLP_Pro_01/database/AutoMaster_TrainSet.csv"
@@ -24,10 +25,10 @@ with open(STOP_WORDS, 'r', encoding='utf-8') as f:
 
 
 def clean_sentence(sentence):
-    '''
+    """
     特殊符号去除
     使用正则表达式去除无用的符号、词语
-    '''
+    """
     if isinstance(sentence, str):
         return re.sub(
             r'[\s+\-\|\!\/\[\]\{\}_,.$%^*(+\"\')]+|[:：+——()?【】“”！，。？、~@#￥%……&*（）]+|车主说|技师说|语音|图片|你好|您好|nan',
