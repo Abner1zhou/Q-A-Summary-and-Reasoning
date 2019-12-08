@@ -96,10 +96,11 @@ def get_segment(data_path):
 
 
 def get_w2v(merger_seg_path):
-    w2v_model = word2vec.Word2Vec(LineSentence(merger_seg_path),
-                            workers=6,
-                            min_count=5, # 忽略词频小于5的单词
-                            size=200)
+    w2v_model = word2vec.Word2Vec(LineSentence(merger_seg_path)
+                                  , min_count=5
+                                  , workers=6
+                                  # 忽略词频小于5的单词
+                                  , size=200)
     return w2v_model
 
 
@@ -114,10 +115,10 @@ def get_max_len(data):
 
 
 def pad_proc(sentence, max_len, vocab):
-    '''
+    """
     # 填充字段
     < start > < end > < pad > < unk > max_lens
-    '''
+    """
     # 0.按空格统计切分出词
     words = sentence.strip().split(' ')
     # 1. 截取规定长度的词数
@@ -132,6 +133,12 @@ def pad_proc(sentence, max_len, vocab):
 
 
 def translate_data(sentence, vocab):
+    """
+    把句子中的单词转换为index
+    :param sentence: 一行数据
+    :param vocab: 词表
+    :return: 由index组成过的句子
+    """
     words = sentence.split(' ')
     ids = [vocab[word] if word in vocab else vocab['<UNK>'] for word in words]
     return ids
@@ -154,10 +161,11 @@ def build_dataset(train_df_path, test_df_path):
     test_seg_df['X'] = test_seg_df[['Question', 'Dialogue']].apply(lambda x: ' '.join(x), axis=1)
     train_seg_df['Y'] = train_seg_df[['Report']]
     # 3. 计算词向量
+    print("getting word vector...")
     w2v_model = get_w2v(config.merger_seg_path)
     # 4. 构建词表
+    print("getting vocab...")
     vocab = {word: index for index, word in enumerate(w2v_model.wv.index2word)}
-    reverse_vocab = {index: word for index, word in enumerate(w2v_model.wv.index2word)}
     # 5. 计算数据集长度，用来给encoder设置合理的单元数
     train_x_max_len = get_max_len(train_seg_df['X'])
     train_y_max_len = get_max_len(train_seg_df['Y'])
@@ -186,6 +194,7 @@ def build_dataset(train_df_path, test_df_path):
     vocab = {word: index for index, word in enumerate(w2v_model.wv.index2word)}
     reverse_vocab = {index: word for index, word in enumerate(w2v_model.wv.index2word)}
     # 保存词表
+    print("Saving vocab...")
     file_utils.save_dict(config.vocab_path, vocab)
     file_utils.save_dict(config.reverse_vocab_path, reverse_vocab)
     # 9. 保存embedding matrix
@@ -193,6 +202,7 @@ def build_dataset(train_df_path, test_df_path):
     np.savetxt(config.embedding_matrix_path, embedding_matrix, fmt='%0.8f')
     # 10. 把单词转换为index
     # 原数据为【方向机 重 助力 泵 方向机 都 换 新 都...】 转换成 [398, 985, 244, 229, 398...]
+    print("Translating the sentences...")
     train_x_ids = train_seg_df['X'].apply(lambda x: translate_data(x, vocab))
     train_y_ids = train_seg_df['Y'].apply(lambda x: translate_data(x, vocab))
     test_x_ids = test_seg_df['X'].apply(lambda x: translate_data(x, vocab))
@@ -204,6 +214,19 @@ def build_dataset(train_df_path, test_df_path):
     np.savetxt(config.train_y_path, train_y, fmt='%0.8f')
     np.savetxt(config.test_x_path, test_x, fmt='%0.8f')
 
+    return train_x, train_y, test_x
+
+
+def load_dataset():
+    """
+    :return: 加载处理好的数据集
+    """
+    train_x = np.loadtxt(config.train_x_path)
+    train_y = np.loadtxt(config.train_y_path)
+    test_x = np.loadtxt(config.test_x_path)
+    train_x.dtype = 'float64'
+    train_y.dtype = 'float64'
+    test_x.dtype = 'float64'
     return train_x, train_y, test_x
 
 
