@@ -1,0 +1,9 @@
+database/wv/
+.idea/
+jupyter/.ipynb_checkpoints/
+database/merged_train_test_seg_data.csv
+database/text_x_df.csv
+database/train_x_df.csv
+database/train_y_df.csv
+utils/__pycache__/
+database/.ipynb_checkpoints/
