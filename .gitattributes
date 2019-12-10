@@ -1,2 +1,2 @@
-*.py linguist-language=swift
-*.ipynb linguist-language=swift
+*.py linguist-language=python
+*.ipynb linguist-language=python
