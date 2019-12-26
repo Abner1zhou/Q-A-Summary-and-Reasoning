@@ -74,6 +74,7 @@ class Encoder(tf.keras.Model):
 class BahdanauAttention(tf.keras.layers.Layer):
     def __init__(self, units):
         super(BahdanauAttention, self).__init__()
+        # Dense implements the operation: output = activation(dot(input, kernel) + bias)
         self.W1 = tf.keras.layers.Dense(units)
         self.W2 = tf.keras.layers.Dense(units)
         self.V = tf.keras.layers.Dense(1)
@@ -82,7 +83,8 @@ class BahdanauAttention(tf.keras.layers.Layer):
         # query为上次的GRU隐藏层
         # values为编码器的编码结果enc_output
         # 在seq2seq模型中，St是后面的query向量，而编码过程的隐藏状态hi是values。
-        # Encoder得到的hidden是一个二维向量，enc_output是三维向量，所以需要对hidden增维
+        # St表示的是Ht, Decoder hidden output. Hi is encoder hidden output
+        # Encoder得到的hidden是一个二维向量，dec_output是三维向量，所以需要对hidden增维
         # tf.expand_dims(query, 1)  1表示增维的位置
         hidden_with_time_axis = tf.expand_dims(query, 1)
 
@@ -114,6 +116,7 @@ class Decoder(tf.keras.Model):
                                        return_sequences=True,
                                        return_state=True,
                                        recurrent_initializer='glorot_uniform')
+        # 用于处理attention
         self.fc = tf.keras.layers.Dense(vocab_size)
 
         # used for attention
@@ -135,6 +138,7 @@ class Decoder(tf.keras.Model):
         output, state = self.gru(x)
 
         # output shape == (batch_size * 1, hidden_size)
+        # tf.reshape(tensor, shape, name=None)
         output = tf.reshape(output, (-1, output.shape[2]))
 
         # output shape == (batch_size, vocab)

@@ -31,11 +31,15 @@ train_x_path = os.path.join(root, 'database', 'train_x_df.csv')
 train_y_path = os.path.join(root, 'database', 'train_y_df.csv')
 # test_Y
 test_x_path = os.path.join(root, 'database', 'text_x_df.csv')
+# train y length
+trg_sequence_length_path = os.path.join(root, 'database', 'trg_sequence_length.csv')
 # 词表保存路径
 vocab_path = os.path.join(root, 'database', 'wv', 'vocab.txt')
 reverse_vocab_path = os.path.join(root, 'database', 'wv', 'reverse_vocab.txt')
 # embedding matrix
 embedding_matrix_path = os.path.join(root, 'database', 'wv', 'embedding_matrix.csv')
+# model save path
+model_save_dir = os.path.join(root, 'database', 'checkpoint')
 
 # 设置常量
 # 训练轮数

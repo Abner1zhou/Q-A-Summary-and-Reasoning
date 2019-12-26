@@ -170,6 +170,7 @@ def build_dataset(train_df_path, test_df_path):
     train_x_max_len = get_max_len(train_seg_df['X'])
     train_y_max_len = get_max_len(train_seg_df['Y'])
     test_x_max_len = get_max_len(test_seg_df['X'])
+    trg_sequence_length = train_seg_df['Y'].apply(lambda x: len(x))
     # 6. 添加填充字段
     train_seg_df['X'] = train_seg_df['X'].apply(lambda x: pad_proc(x, train_x_max_len, vocab))
     train_seg_df['Y'] = train_seg_df['Y'].apply(lambda x: pad_proc(x, train_y_max_len, vocab))
@@ -210,11 +211,13 @@ def build_dataset(train_df_path, test_df_path):
     train_x = np.array(train_x_ids.tolist())
     train_y = np.array(train_y_ids.tolist())
     test_x = np.array(test_x_ids.tolist())
-    np.savetxt(config.train_x_path, train_x, fmt='%0.8f')
-    np.savetxt(config.train_y_path, train_y, fmt='%0.8f')
-    np.savetxt(config.test_x_path, test_x, fmt='%0.8f')
+    trg_sequence_length = np.array(trg_sequence_length.tolist())
+    np.savetxt(config.train_x_path, train_x)
+    np.savetxt(config.train_y_path, train_y)
+    np.savetxt(config.test_x_path, test_x)
+    np.savetxt(config.trg_sequence_length_path, trg_sequence_length)
 
-    return train_x, train_y, test_x
+    return train_x, train_y, test_x, trg_sequence_length
 
 
 def load_dataset():
@@ -224,14 +227,16 @@ def load_dataset():
     train_x = np.loadtxt(config.train_x_path)
     train_y = np.loadtxt(config.train_y_path)
     test_x = np.loadtxt(config.test_x_path)
-    train_x.dtype = 'float64'
-    train_y.dtype = 'float64'
-    test_x.dtype = 'float64'
-    return train_x, train_y, test_x
+    trg_sequence_length = np.loadtxt(config.trg_sequence_length_path)
+    train_x = train_x.astype('int64')
+    train_y = train_y.astype('int64')
+    test_x = test_x.astype('int64')
+    trg_sequence_length = trg_sequence_length.astype('int64')
+    return train_x, train_y, test_x, trg_sequence_length
 
 
 def main():
-    train_x, train_y, test_x = build_dataset(config.train_data_path, config.test_data_path)
+    train_x, train_y, test_x, trg_sequence_length = build_dataset(config.train_data_path, config.test_data_path)
 
 
 if __name__ == '__main__':
