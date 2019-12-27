@@ -26,7 +26,7 @@ def clean_sentence(sentence):
     """
     if isinstance(sentence, str):
         return re.sub(
-            r'[\s+\-\|\!\/\[\]\{\}_,.$%^*(+\"\')]+|[:：+——()?【】“”！，。？、~@#￥%……&*（）]+|车主说|技师说|语音|图片|你好|您好|nan',
+            r'[\s+\-\|\!\/\[\]\{\}_,.$%^*(+\"\')]+|[:：+——()?【】“”！？、~@#￥%……&*（）]+|车主说|技师说|语音|图片|你好|您好|nan',
             '', sentence)
     else:
         return ''
@@ -74,14 +74,16 @@ def cut_data_frame(df):
     return df
 
 
-def get_segment(data_path):
+def get_segment(data_path, is_train=False):
     """
     将输入的数据集切词并返回
+    :param is_train: 是否训练数据集
     :param data_path: 输入csv格式数据集
     :return: 返回一个切词完毕的数据集
     """
     df = pd.read_csv(data_path)
-    df = df.dropna()
+    if is_train:
+        df.dropna(subset=['Report'], inplace=True)
     # 1.切词
     seg_df = multi_cpus.parallelize(df, cut_data_frame)
     # 对切词完的数据进行拼接,这部分用来训练词向量
@@ -152,7 +154,7 @@ def build_dataset(train_df_path, test_df_path):
     :return:
     """
     # 1. 切词
-    train_seg_df = get_segment(train_df_path)
+    train_seg_df = get_segment(train_df_path, is_train=True)
     test_seg_df = get_segment(test_df_path)
     # 2. 合并数据集
     merged_df = pd.concat([train_seg_df[['merged']], test_seg_df[['merged']]], axis=0)
