@@ -8,7 +8,7 @@
 
 欢迎指正～
 
-已完成PaddlePaddle版本的baseline seq2seq
+已完成PaddlePaddle版本的seq2seq + attention
 
 
 
@@ -21,3 +21,14 @@ utils.data_processing 来处理训练数据集和测试数据集
 
 
 直接运行[**seq2seq_train.py**](https://github.com/Abner1zhou/Q-A-Summary-and-Reasoning/blob/paddle/seq2seq_train.py)可以训练数据集
+
+
+
+### 不同方案分数记录：
+
+seq2seq + attention   最高分只能到29分左右
+
+### 存在以下问题：
+
+1. 无法解决OOV问题
+2. 预测出来的句子会出现词语重复的问题
