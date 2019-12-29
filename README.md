@@ -8,10 +8,16 @@
 
 欢迎指正～
 
-预计完成时间2个月（2020年1月11日）
+已完成PaddlePaddle版本的baseline seq2seq
 
 
 
 数据处理归类到了 [utils/data_processing.py](https://github.com/Abner1zhou/Q-A-Summary-and-Reasoning/blob/master/utils/data_processing.py)
 
-[04_seq2seq_model.py](https://github.com/Abner1zhou/Q-A-Summary-and-Reasoning/blob/master/04_seq2seq_model.py)已经能正常训练，但是由于我的GPU性能问题，比较慢。
+### 如何运行
+
+utils.data_processing 来处理训练数据集和测试数据集
+
+
+
+直接运行[**seq2seq_train.py**](https://github.com/Abner1zhou/Q-A-Summary-and-Reasoning/blob/paddle/seq2seq_train.py)可以训练数据集

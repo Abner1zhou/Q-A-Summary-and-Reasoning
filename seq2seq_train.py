@@ -12,44 +12,30 @@ from paddle.fluid import layers
 import numpy as np
 import pandas as pd
 import six
+import time
 
 from utils.config import *
 from utils.data_processing import load_dataset
 from utils.wv_loader import load_vocab, load_embedding_matrix
 
 
-train_x, train_y, test_x, trg_sequence_length = load_dataset()
-vocab, reverse_vocab = load_vocab(vocab_path)
-embedding_matrix = load_embedding_matrix()
+train_x, train_y, test_x, train_lbl, trg_sequence_length, vocab, reverse_vocab, embedding_matrix = load_dataset()
+
 
 # 训练集的长度
 BUFFER_SIZE = len(train_x)
-
 # 输入的长度
 max_length_inp = train_x.shape[1]
 # 输出的长度
 max_length_targ = train_y.shape[1]
-
-BATCH_SIZE = 64
-EPOCH_NUM = 2
-
-# 训练一轮需要迭代多少步
-steps_per_epoch = len(train_x)//BATCH_SIZE
-
-# 词向量维度
-embedding_dim = 200
-# 隐藏层单元数
-units = 512
-
 # 词表大小
 vocab_size = len(vocab)
-
-
 beam_size = 4
 bos_id = vocab['<START>']
 eos_id = vocab['<STOP>']
-max_length = 36
+tar_max_length = len(train_y)
 
+# 加载预训练词向量
 w_param_attrs = fluid.ParamAttr(
     name="emb_weight",
     initializer=fluid.initializer.NumpyArrayInitializer(embedding_matrix, ),
@@ -82,13 +68,12 @@ class DecoderCell(layers.RNNCell):
             layers.fc(hidden, size=self.hidden_size, bias_attr=False), [1])
         mixed_state = fluid.layers.elementwise_add(
             encoder_output_proj,
-            layers.expand(decoder_state_proj,
-                        [1, layers.shape(decoder_state_proj)[1], 1]))
+            decoder_state_proj)
         attn_scores = layers.squeeze(
             layers.fc(input=mixed_state,
-                      size=1,
-                      num_flatten_dims=2,
-                      bias_attr=False), [2])
+                    size=1,
+                    num_flatten_dims=2,
+                    bias_attr=False), [2])
         attn_scores = layers.softmax(attn_scores)
         context = layers.reduce_sum(layers.elementwise_mul(encoder_output,
                                                         attn_scores,
@@ -158,7 +143,7 @@ def decoder(encoder_output,
         decoder_output, _ = layers.dynamic_decode(
             decoder=beam_search_decoder,
             inits=decoder_initial_states,
-            max_step_num=max_length,
+            max_step_num=tar_max_length,
             output_time_major=False,
             encoder_output=encoder_output,
             encoder_output_proj=encoder_output_proj)
@@ -201,13 +186,14 @@ def data_func(is_train=True):
     # 训练时还需要目标语言target和label数据
     if is_train:
         trg = fluid.data(name="trg", shape=[None, None], dtype="int64")
+        lbl = fluid.data(name="lbl", shape=[None, None], dtype="int64")
         trg_sequence_length = fluid.data(name="trg_sequence_length",
                                          shape=[None],
                                          dtype="int64")
-        inputs += [trg, trg_sequence_length]
+        inputs += [trg, lbl, trg_sequence_length]
     # data loader
     loader = fluid.io.DataLoader.from_generator(feed_list=inputs,
-                                                capacity=6,
+                                                capacity=8,
                                                 iterable=True,
                                                 use_double_buffer=True)
     return inputs, loader
@@ -237,12 +223,11 @@ def optimizer_func():
             regularization_coeff=1e-4))
 
 
-def reader_creator(trainX, trainY, train_Y_length):
-    data = zip(trainX, trainY, train_Y_length)
-
+def reader_creator(trainX, trainY, trainLBL, train_Y_length):
+    data = zip(trainX, trainY, trainLBL, train_Y_length)
     def reader():
-        for x_ids, y_ids, length in data:
-            yield x_ids, y_ids, length
+        for x_ids, y_ids, trainLBL, length in data:
+            yield x_ids, y_ids, trainLBL, length
     return reader
 
 
@@ -256,12 +241,10 @@ def test_reader(test_x):
 def input_func(batch_size, is_train=True):
     if is_train:
         data_generator = fluid.io.shuffle(
-            reader_creator(train_x, train_y, trg_sequence_length),
+            reader_creator(train_x, train_y, train_lbl, trg_sequence_length),
             buf_size=100)
     else:
-        data_generator = fluid.io.shuffle(
-            test_reader(test_x),
-            buf_size=100)
+        data_generator = test_reader(test_x)
 
     batch_generator = fluid.io.batch(data_generator, batch_size=batch_size)
 
@@ -271,8 +254,9 @@ def input_func(batch_size, is_train=True):
                 batch_src = np.array([ins[0] for ins in batch])
                 inputs = [batch_src]
                 batch_trg = np.array([ins[1] for ins in batch])
-                batch_trl = np.array([ins[2] for ins in batch])
-                inputs += [batch_trg, batch_trl]
+                batch_lbl = np.array([ins[2] for ins in batch])
+                batch_trl = np.array([ins[3] for ins in batch])
+                inputs += [batch_trg, batch_lbl, batch_trl]
             else:
                 batch_src = np.array([ins for ins in batch])
                 inputs = [batch_src]
@@ -289,7 +273,7 @@ with fluid.program_guard(train_prog, startup_prog):
         # inputs = [src, src_sequence_length, trg, trg_sequence_length, label]
         inputs, loader = data_func(is_train=True)
         logits = model_func(inputs, is_train=True)
-        loss = loss_func(logits, inputs[1], inputs[2])
+        loss = loss_func(logits, inputs[2], inputs[3])
         optimizer = optimizer_func()
         optimizer.minimize(loss)
 
@@ -298,7 +282,7 @@ with fluid.program_guard(train_prog, startup_prog):
 use_cuda = True
 places = fluid.cuda_places() if use_cuda else fluid.cpu_places()
 # 设置数据源
-loader.set_batch_generator(input_func(4, True),
+loader.set_batch_generator(input_func(BATCH_SIZE, True),
                            places=places)
 # 定义执行器，初始化参数并绑定Program
 exe = fluid.Executor(places[0])
@@ -308,15 +292,19 @@ prog = fluid.CompiledProgram(train_prog).with_data_parallel(
     loss_name=loss.name)
 
 
+batch_start_time = time.time()
 for pass_id in six.moves.xrange(EPOCH_NUM):
     batch_id = 0
     for data in loader():
-        loss_val, logits_val  = exe.run(prog, feed=data, fetch_list=[loss, logits])
-        print(layers.softmax(logits_val).shape)
+        loss_val  = exe.run(prog, feed=data, fetch_list=[loss])[0]
         if batch_id % 50 == 0:
             print('pass_id: %d, batch_id: %d, loss: %f' %
                     (pass_id, batch_id, loss_val))
+            print("batch running time:{}".format(time.time()-batch_start_time))
+            batch_start_time = time.time()
         batch_id += 1
     # 保存模型
     fluid.io.save_params(exe, model_save_dir, main_program=train_prog)
+    loader.set_batch_generator(input_func(64, True),
+                            places=places)
     print("model save success")

@@ -16,7 +16,7 @@ import numpy as np
 
 from utils import multi_cpus
 from utils import config, file_utils
-from utils.config import WV_TRAIN_EPOCHS
+from utils.wv_loader import load_vocab, load_embedding_matrix
 
 
 def clean_sentence(sentence):
@@ -172,7 +172,8 @@ def build_dataset(train_df_path, test_df_path):
     train_x_max_len = get_max_len(train_seg_df['X'])
     train_y_max_len = get_max_len(train_seg_df['Y'])
     test_x_max_len = get_max_len(test_seg_df['X'])
-    trg_sequence_length = train_seg_df['Y'].apply(lambda x: len(x))
+    # 计算target长度， 需要把<stop>算进来，所以长度会多加1
+    trg_sequence_length = train_seg_df['Y'].apply(lambda x:x.count(' ') + 2)
     # 6. 添加填充字段
     train_seg_df['X'] = train_seg_df['X'].apply(lambda x: pad_proc(x, train_x_max_len, vocab))
     train_seg_df['Y'] = train_seg_df['Y'].apply(lambda x: pad_proc(x, train_y_max_len, vocab))
@@ -224,7 +225,10 @@ def build_dataset(train_df_path, test_df_path):
 
 def load_dataset():
     """
-    :return: 加载处理好的数据集
+    把已处理的数据传入训练模型
+    :return:
+    trg_sequence_length：目标词长度
+    train_lbl：去掉<start>的目标词，和decoder结果直接计算loss
     """
     train_x = np.loadtxt(config.train_x_path)
     train_y = np.loadtxt(config.train_y_path)
@@ -234,11 +238,15 @@ def load_dataset():
     train_y = train_y.astype('int64')
     test_x = test_x.astype('int64')
     trg_sequence_length = trg_sequence_length.astype('int64')
-    return train_x, train_y, test_x, trg_sequence_length
+    vocab, reverse_vocab = load_vocab(config.vocab_path)
+    train_lbl = np.hstack(
+        (train_y[:, 1:], np.array([vocab['<PAD>']] * train_y.shape[0]).reshape((train_y.shape[0], 1))))
+    embedding_matrix = load_embedding_matrix()
+    return train_x, train_y, test_x, train_lbl, trg_sequence_length, vocab, reverse_vocab, embedding_matrix
 
 
 def main():
-    train_x, train_y, test_x, trg_sequence_length = build_dataset(config.train_data_path, config.test_data_path)
+    build_dataset(config.train_data_path, config.test_data_path)
 
 
 if __name__ == '__main__':
