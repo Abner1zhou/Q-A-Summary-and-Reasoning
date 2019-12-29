@@ -7,4 +7,7 @@ database/train_x_df.csv
 database/train_y_df.csv
 utils/__pycache__/*
 database/.ipynb_checkpoints/
+database/checkpoint/
+database/trg_sequence_length.csv
+jupyter/test.ipynb
 
