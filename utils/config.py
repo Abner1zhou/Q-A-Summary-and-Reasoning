@@ -44,6 +44,7 @@ model_save_dir = os.path.join(root, 'database', 'checkpoint')
 # 设置常量
 # 训练轮数
 BATCH_SIZE = 64
+WV_EPOCH_NUM = 10
 EPOCH_NUM = 10
 # 词向量维度
 embedding_dim = 200

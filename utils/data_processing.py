@@ -98,11 +98,13 @@ def get_segment(data_path, is_train=False):
 
 
 def get_w2v(merger_seg_path):
-    w2v_model = word2vec.Word2Vec(LineSentence(merger_seg_path)
-                                  , min_count=5
-                                  , workers=6
+    w2v_model = word2vec.Word2Vec(LineSentence(merger_seg_path),
                                   # 忽略词频小于5的单词
-                                  , size=200)
+                                  min_count=5,
+                                  workers=6,
+                                  # 词向量训练轮数
+                                  iter=config.WV_EPOCH_NUM,
+                                  size=200)
     return w2v_model
 
 
