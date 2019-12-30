@@ -43,18 +43,30 @@ w_param_attrs = fluid.ParamAttr(
 
 
 def encoder(trg_inp, hidden_dim):
-    encoder_cell = paddle.fluid.layers.GRUCell(hidden_size=hidden_dim)
-    src_embedding = fluid.embedding(
-        input=trg_inp,
-        size=embedding_matrix.shape,
-        param_attr= w_param_attrs,
-        is_sparse=False)
-    encoder_output, encoder_output_state = fluid.layers.rnn(
-        cell=encoder_cell,
+    # 使用GRUCell构建前向RNN
+    encoder_fwd_cell = layers.GRUCell(hidden_size=hidden_dim)
+    src_embedding = fluid.embedding(input=trg_inp,
+                                    size=embedding_matrix.shape,
+                                    param_attr= w_param_attrs,
+                                    is_sparse=False)
+    # 前向encoder
+    encoder_fwd_output, fwd_state = layers.rnn(
+        cell=encoder_fwd_cell,
         inputs=src_embedding,
         time_major=False,
         is_reverse=False)
-    return encoder_output, encoder_output_state
+    # 使用GRUCell构建反向RNN
+    encoder_bwd_cell = layers.GRUCell(hidden_size=hidden_dim)
+    encoder_bwd_output, bwd_state = layers.rnn(
+        cell=encoder_bwd_cell,
+        inputs=src_embedding,
+        time_major=False,
+        is_reverse=True)
+    # 拼接前向与反向GRU的编码结果得到h， shape = [batch, sen_length, units*2]
+    encoder_output = layers.concat(
+        input=[encoder_fwd_output, encoder_bwd_output], axis=2)
+    encoder_state = layers.concat(input=[fwd_state, bwd_state], axis=1)
+    return encoder_output, encoder_state
 
 
 class DecoderCell(layers.RNNCell):
@@ -66,9 +78,10 @@ class DecoderCell(layers.RNNCell):
         # 定义attention用以计算context，即 c_i，这里使用Bahdanau attention机制
         decoder_state_proj = layers.unsqueeze(
             layers.fc(hidden, size=self.hidden_size, bias_attr=False), [1])
-        mixed_state = fluid.layers.elementwise_add(
-            encoder_output_proj,
-            decoder_state_proj)
+        # encoder + decoder
+        mixed_state = fluid.layers.elementwise_add(encoder_output_proj,
+                                                   layers.expand(decoder_state_proj,
+                                                                 [1, layers.shape(decoder_state_proj)[1], 1]))
         attn_scores = layers.squeeze(
             layers.fc(input=mixed_state,
                     size=1,
